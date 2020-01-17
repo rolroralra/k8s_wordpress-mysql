@@ -1,0 +1,77 @@
+spec:
+  maxReplicas: 5
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: wordpress-deployment
+  targetCPUUtilizationPercentage: 30
+---
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: wordpress-allow-from-foo
+spec:
+  policyTypes:
+  - Ingress
+  podSelector:
+    matchLabels:
+      app: wordpress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: foo
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: wordpress-ingress
+spec:
+  rules:
+  - host: www.gasbugs.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: wordpress-service
+          servicePort: 80
+#---
+## mysql-pvc-storageclass.yaml
+##apiVersion: v1
+##kind: Pod
+##metadata:
+##  name: mysql
+##spec:
+##  containers:
+##  - image: mongo
+##    name: mysql
+##    volumeMounts:
+##    - mountPath: /data/db
+##      name: mysql
+##  volumes:
+##    - name: mysql
+##      persistentVolumeClaim:
+##        claimName: mysql-pvc
+##
+##---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: mysql-pvc
+#spec:
+#  accessModes:
+#  - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 1Gi
+#  storageClassName: "mysql-storage-class"
+#
+#---
+#apiVersion: storage.k8s.io/v1
+#kind: StorageClass
+#metadata:
+#  name: mysql-storage-class
+#provisioner: kubernetes.io/gce-pd
+#parameters:
+#  type: pd-ssd
