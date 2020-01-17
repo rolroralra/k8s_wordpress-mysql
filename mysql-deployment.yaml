@@ -1,124 +1,109 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wordpress-deployment
+  name: mysql-deployment
   labels:
-    app: wordpress
+    app: mysql
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: wordpress
+      app: mysql
   template:
     metadata:
       labels:
-        app: wordpress
+        app: mysql
     spec:
       containers:
-      - name: wordpress
-        image: wordpress
+      - name: mysql
+        image: mysql:5.6
         ports:
-        - containerPort: 8080
+        - containerPort: 3306
           protocol: TCP
         volumeMounts:
         - mountPath: /data/db
-          name: wordpress
+          name: mysql
       volumes:
-      - name: wordpress
+      - name: mysql
         persistentVolumeClaim:
-          claimName: wordpress-pvc
+          claimName: mysql-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: wordpress-service
+  name: mysql-service
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
-    app: wordpress
+    app: mysql
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 8080
-      NodePort: 30001
+      port: 3306
+      targetPort: 3306
 ---
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: wordpress-hpa
+  name: mysql-hpa
 spec:
   maxReplicas: 5
   minReplicas: 2
   scaleTargetRef:
     apiVersion: extensions/v1beta1
     kind: Deployment
-    name: wordpress-deployment
+    name: mysql-deployment
   targetCPUUtilizationPercentage: 30
 ---
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: wordpress-allow-from-foo
+  name: mysql-allow-from-wordpress
 spec:
   policyTypes:
   - Ingress
   podSelector:
     matchLabels:
-      app: wordpress
+      app: mysql
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          app: foo
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: wordpress-ingress
-spec:
-  rules:
-  - host: www.gasbugs.com
-    http:
-      paths:
-      - path: /
-        backend:
-          serviceName: wordpress-service
-          servicePort: 80
----
-## wordpress-pvc-storageclass.yaml
+          app: wordpress
+#---
+## mysql-pvc-storageclass.yaml
 #apiVersion: v1
 #kind: Pod
 #metadata:
-#  name: wordpress
+#  name: mysql
 #spec:
 #  containers:
 #  - image: mongo
-#    name: wordpress
+#    name: mysql
 #    volumeMounts:
 #    - mountPath: /data/db
-#      name: wordpress
+#      name: mysql
 #  volumes:
-#    - name: wordpress
+#    - name: mysql
 #      persistentVolumeClaim:
-#        claimName: wordpress-pvc
-#---
+#        claimName: mysql-pvc
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wordpress-pvc
+  name: mysql-pvc
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: "wordpress-storage-class"
+  storageClassName: "mysql-storage-class"
 
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: wordpress-storage-class
+  name: mysql-storage-class
 provisioner: kubernetes.io/gce-pd
 parameters:
   type: pd-ssd
